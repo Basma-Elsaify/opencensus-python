@@ -25,12 +25,14 @@ from fastapi import FastAPI, Request
 
 app = FastAPI()
 
+key='instrumentationkeyvalue'
+
 logger = logging.getLogger(__name__)
 logger.addHandler(AzureLogHandler(
-    connection_string='InstrumentationKey=b98aa378-e4e6-45f6-a76a-7ec995aa8bb5')
+    connection_string=f'InstrumentationKey={key}')
 )
 
-middleware = FastAPIMiddleware(app, exporter=AzureExporter(connection_string=f'InstrumentationKey=b98aa378-e4e6-45f6-a76a-7ec995aa8bb5'),sampler=ProbabilitySampler(rate=1.0))
+middleware = FastAPIMiddleware(app, exporter=AzureExporter(connection_string=f'InstrumentationKey={key}'),sampler=ProbabilitySampler(rate=1.0))
 
 
 @app.get("/")

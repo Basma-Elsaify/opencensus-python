@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from google.rpc import code_pb2
 
-from opencensus.common import configuration
+# from opencensus.common import configuration
 from opencensus.trace import (
     attributes_helper,
     execution_context,
@@ -73,38 +73,33 @@ class FastAPIMiddleware(object):
         self.app = app
 
         # get settings from app config
-        settings = self.app.config.get('OPENCENSUS', {})
-        settings = settings.get('TRACE', {})
+        # settings = self.app.config.get('OPENCENSUS', {})
+        # settings = settings.get('TRACE', {})
 
         if self.sampler is None:
-            self.sampler = (settings.get('SAMPLER', None)
-                            or samplers.ProbabilitySampler())
+            self.sampler = (samplers.ProbabilitySampler())
             if isinstance(self.sampler, six.string_types):
                 self.sampler = configuration.load(self.sampler)
 
         if self.exporter is None:
-            self.exporter = settings.get('EXPORTER', None) or \
-                print_exporter.PrintExporter()
+            self.exporter = print_exporter.PrintExporter()
             if isinstance(self.exporter, six.string_types):
                 self.exporter = configuration.load(self.exporter)
 
         if self.propagator is None:
-            self.propagator = settings.get('PROPAGATOR', None) or \
-                trace_context_http_header_format.TraceContextPropagator()
+            self.propagator = trace_context_http_header_format.TraceContextPropagator()
             if isinstance(self.propagator, six.string_types):
                 self.propagator = configuration.load(self.propagator)
 
-        self.blacklist_paths = settings.get(BLACKLIST_PATHS,
-                                            self.blacklist_paths)
+        self.blacklist_paths = self.blacklist_paths
 
-        self.blacklist_hostnames = settings.get(BLACKLIST_HOSTNAMES, None)
-
+        self.blacklist_hostnames = None
         self.setup_trace()
 
     def setup_trace(self):
-        self.app.before_request(self._before_request)
-        self.app.after_request(self._after_request)
-        self.app.teardown_request(self._teardown_request)
+        # Not expected to work as not attached to the app.
+        self._before_request
+        self._after_request
 
     def _before_request(self, request:Request):
         """A function to be run before each request.

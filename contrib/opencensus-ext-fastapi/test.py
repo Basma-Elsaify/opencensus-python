@@ -1,38 +1,46 @@
-# Copyright 2017, OpenCensus Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-from opencensus.ext.fastapi.fastapi_middleware import FastAPIMiddleware
 import logging
+import uvicorn
+from fastapi import FastAPI, Request
 from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from opencensus.trace.samplers import ProbabilitySampler
+from opencensus.ext.fastapi.fastapi_middleware import FastAPIMiddleware
+# to be removed
+from opencensus.trace.attributes_helper import COMMON_ATTRIBUTES
 from opencensus.trace.tracer import Tracer
-from opencensus.trace import config_integration
-import uvicorn
-from fastapi import FastAPI, Request
-
+from opencensus.trace.span import SpanKind
 
 app = FastAPI()
 
-key='instrumentationkeyvalue'
+key=''
+HTTP_URL = COMMON_ATTRIBUTES['HTTP_URL']
+HTTP_STATUS_CODE = COMMON_ATTRIBUTES['HTTP_STATUS_CODE']
 
 logger = logging.getLogger(__name__)
-logger.addHandler(AzureLogHandler(
-    connection_string=f'InstrumentationKey={key}')
+logger.addHandler(AzureLogHandler(connection_string=f'InstrumentationKey={key}')
 )
 
-middleware = FastAPIMiddleware(app, exporter=AzureExporter(connection_string=f'InstrumentationKey={key}'),sampler=ProbabilitySampler(rate=1.0))
+# to uncomment and replace the fastAPIMiddleware function
+# middleware = FastAPIMiddleware(app, exporter=AzureExporter(connection_string=f'InstrumentationKey={key}'),sampler=ProbabilitySampler(rate=1.0))
+
+# fastapi middleware for opencensus
+@app.middleware("http")
+async def fastAPIMiddleware(request: Request, call_next):
+    tracer = Tracer(exporter=AzureExporter(connection_string=f'InstrumentationKey={key}'),sampler=ProbabilitySampler(1.0))
+    with tracer.span("main") as span:
+        span.span_kind = SpanKind.SERVER
+
+        response = await call_next(request)
+
+        tracer.add_attribute_to_current_span(
+            attribute_key=HTTP_STATUS_CODE,
+            attribute_value=response.status_code)
+        tracer.add_attribute_to_current_span(
+            attribute_key=HTTP_URL,
+            attribute_value=str(request.url))
+
+    return response
 
 
 @app.get("/")

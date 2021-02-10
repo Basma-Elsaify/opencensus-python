@@ -1,5 +1,5 @@
 NOT TO USE YET:: OpenCensus FastAPI Integration || this is still in development, can't be used yet
-=================================================================================
+==================================================================================================
 
 |pypi|
 
@@ -26,11 +26,11 @@ Usage
 
    app = FastAPI()
 
-   middleware = FastAPIMiddleware(
-       app,
-       exporter=AzureExporter(connection_string="InstrumentationKey=<InstrumentationKey>"),
-       sampler=ProbabilitySampler(rate=1.0),
-   )
+   @app.on_event("startup")
+   async def startup_event():
+        app.trace_exporter = AzureExporter(connection_string=f'instrumentation-key=<InstrumentationKey>')
+
+   app.add_middleware(FastAPIMiddleware)
 
    @app.get("/")
    async def root(request:Request):

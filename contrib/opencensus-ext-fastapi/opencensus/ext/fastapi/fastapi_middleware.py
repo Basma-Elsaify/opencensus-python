@@ -1,22 +1,9 @@
-
-# HTTP_HOST = attributes_helper.COMMON_ATTRIBUTES['HTTP_HOST']
-# HTTP_METHOD = attributes_helper.COMMON_ATTRIBUTES['HTTP_METHOD']
-# HTTP_PATH = attributes_helper.COMMON_ATTRIBUTES['HTTP_PATH']
-# HTTP_ROUTE = attributes_helper.COMMON_ATTRIBUTES['HTTP_ROUTE']
-# HTTP_URL = attributes_helper.COMMON_ATTRIBUTES['HTTP_URL']
-# HTTP_STATUS_CODE = attributes_helper.COMMON_ATTRIBUTES['HTTP_STATUS_CODE']
-
-# BLACKLIST_PATHS = 'BLACKLIST_PATHS'
-# BLACKLIST_HOSTNAMES = 'BLACKLIST_HOSTNAMES'
-
-# log = logging.getLogger(__name__)
-# Opencensus imports
-
 from opencensus.trace.propagation.trace_context_http_header_format import TraceContextPropagator
 from opencensus.trace.samplers import ProbabilitySampler
 from opencensus.trace.tracer import Tracer
 from opencensus.trace.span import SpanKind
 from opencensus.trace.attributes_helper import COMMON_ATTRIBUTES
+from opencensus.trace import print_exporter
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -31,6 +18,9 @@ class FastAPIMiddleware(BaseHTTPMiddleware):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._trace_propagator =TraceContextPropagator()
+        self.sampler = ProbabilitySampler(1)
+        self.exporter = print_exporter.PrintExporter()
+        self.propagator = TraceContextPropagator()
 
     @staticmethod
     def _before_request(request: Request, tracer):
@@ -54,10 +44,13 @@ class FastAPIMiddleware(BaseHTTPMiddleware):
             attribute_value=response.status_code)
     
     async def dispatch(self, request: Request, call_next):
-        exporter = request.app.trace_exporter
+        if hasattr(request.app, 'trace_exporter'):
+            self.exporter = request.app.trace_exporter
+            print('fastapi exporter')
+
         span_context = self._trace_propagator.from_headers(request.headers)
-        tracer = Tracer(span_context=span_context, sampler=ProbabilitySampler(0.1),
-                                    propagator=self._trace_propagator, exporter=exporter)
+        tracer = Tracer(span_context=span_context, sampler=self.sampler,
+                                    propagator=self._trace_propagator, exporter=self.exporter)
         with tracer.span("main") as span:
             span.span_kind = SpanKind.SERVER
 

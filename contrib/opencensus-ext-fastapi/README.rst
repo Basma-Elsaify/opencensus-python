@@ -28,7 +28,7 @@ Usage
 
    @app.on_event("startup")
    async def startup_event():
-        app.trace_exporter = AzureExporter(connection_string=f'instrumentation-key=<InstrumentationKey>')
+        app.trace_exporter = AzureExporter(connection_string=f'instrumentation-key=<INSTRUMENTATION-KEY>')
 
    app.add_middleware(FastAPIMiddleware)
 
@@ -47,14 +47,16 @@ for a complete reference.
 
 .. code:: python
 
-    app.config['OPENCENSUS'] = {
-        'TRACE': {
-            'SAMPLER': 'opencensus.trace.samplers.ProbabilitySampler(rate=1)',
-            'EXPORTER': '''opencensus.ext.ocagent.trace_exporter.TraceExporter(
-                service_name='foobar',
-            )''',
+    settings = {"open-census-settings":
+        {
+            'TRACE': {
+                'SAMPLER': 'opencensus.trace.samplers.ProbabilitySampler(rate=1)',
+                'EXPORTER': "opencensus.ext.azure.trace_exporter.AzureExporter(connection_string=f'InstrumentationKey=<INSTRUMENTATION-KEY>')"
+            }
         }
     }
+    
+    app = FastAPI(extra=settings)
 
 References
 ----------
